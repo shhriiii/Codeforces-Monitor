@@ -3,7 +3,8 @@
 A web-based application to monitor the competitive programming progress of students using Codeforces data. Built using the MERN stack (MongoDB, Express.js, React.js, Node.js).
 ## 🎥 Demo Video
 
-[Watch Demo on YouTube]([https://your-youtube-link.com](https://youtu.be/ft5jAFctVWM))
+[Watch Demo on YouTube](https://youtu.be/ft5jAFctVWM)
+
 ## 🛠️ Tech Stack
 
 - Frontend: React.js
@@ -37,8 +38,9 @@ A web-based application to monitor the competitive programming progress of stude
 - **Student List View:** Displays all registered students with rating stats.
 - **Student Profile Page:** Detailed stats (contest, problem, submission heatmap).
 - **Add/Edit Modal:** For student records.
-- **Download CSV File:** Complete student records.
-- 
+- **- Download CSV File: Export all student data as CSV.
+
+  
 
 ## 🚀 Local Setup
 
