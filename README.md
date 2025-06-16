@@ -38,7 +38,7 @@ A web-based application to monitor the competitive programming progress of stude
 - **Student List View:** Displays all registered students with rating stats.
 - **Student Profile Page:** Detailed stats (contest, problem, submission heatmap).
 - **Add/Edit Modal:** For student records.
-- **- Download CSV File: Export all student data as CSV.
+- **Download CSV File: Export all student data as CSV.
 
   
 
