@@ -3,7 +3,6 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
 const { scheduleCFJob } = require("./jobs/syncCFDataJob");
-
 const app = express();
 const PORT = 8080;
 
@@ -32,6 +31,7 @@ app.use("/api/codeforces", codeforcesRoutes);
 app.get('/', (req, res) => {
     res.send('Backend is running!');
 });
+
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
