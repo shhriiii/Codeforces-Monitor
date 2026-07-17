@@ -28,7 +28,7 @@ The Express server will automatically serve the built React app when `client/bui
 
 ```bash
 # Build command
-cd client && npm ci && npm run build && cd ../server && npm ci
+cd client && npm ci && npm run build && cd ../server && npm ci --omit=dev
 ```
 
 ```bash
@@ -37,3 +37,5 @@ cd server && npm start
 ```
 
 No environment variables or database setup are needed. The hosting service must allow outbound HTTPS requests to `codeforces.com`.
+
+The repository pins Node.js `20.18.0` in `.node-version`, which is compatible with the frontend dependencies. For Render, set the health-check path to `/api/health`.
