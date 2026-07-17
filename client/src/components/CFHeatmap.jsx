@@ -15,15 +15,15 @@ export default function CFHeatmap({ handle }) {
 
     const drawHeatmap = async () => {
       try {
-        const res = await fetch(`https://codeforces.com/api/user.status?handle=${handle}&status=OK`);
+        const res = await fetch(`/api/codeforces/heatmap/${encodeURIComponent(handle)}?days=365`);
+        if (!res.ok) throw new Error('Could not load Codeforces submissions.');
         const data = await res.json();
         if (!mounted) return;
 
-        const submissions = data.result.filter(sub => sub.verdict === 'OK');
         const dateMap = new Map();
-        submissions.forEach(sub => {
-          const date = new Date(sub.creationTimeSeconds * 1000).toISOString().split('T')[0];
-          dateMap.set(date, (dateMap.get(date) || 0) + 1);
+        Object.entries(data).forEach(([day, count]) => {
+          const date = new Date(Number(day)).toISOString().split('T')[0];
+          dateMap.set(date, count);
         });
 
         const today = new Date();
@@ -47,7 +47,7 @@ export default function CFHeatmap({ handle }) {
           .attr('x', d => d3.timeWeek.count(lastYear, d) * cellSize + 30)
           .attr('y', 10)
           .attr('font-size', '10px')
-          .attr('fill', '#666')
+          .attr('fill', 'currentColor')
           .text(d => d.toLocaleString('default', { month: 'short' }));
 
         svg.selectAll('rect')
@@ -72,7 +72,7 @@ export default function CFHeatmap({ handle }) {
             return `${key}: ${dateMap.get(key) || 0} submissions`;
           });
       } catch (error) {
-        console.error("Heatmap error:", error);
+        if (mounted) console.error("Heatmap error:", error);
       }
     };
 

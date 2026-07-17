@@ -1,37 +1,30 @@
 const express = require("express");
-const mongoose = require("mongoose");
 const cors = require("cors");
-require("dotenv").config();
-const { scheduleCFJob } = require("./jobs/syncCFDataJob");
+const fs = require('fs');
+const path = require('path');
 const app = express();
-const PORT = 8080;
+const PORT = process.env.PORT || 8080;
 
 app.use(cors());
 app.use(express.json());
 
-mongoose.connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-}).then(() => console.log("MongoDB connected"))
-  .catch(err => console.log("Mongo error:", err));
-
-// ✅ Load student routes
-const studentRoutes = require("./routes/students");
-app.use("/api/students", studentRoutes);
-
-// ✅ Load new Codeforces routes
+// Codeforces data is fetched live; this server does not require a database.
 const codeforcesRoutes = require('./routes/codeforces');
 app.use("/api/codeforces", codeforcesRoutes);
 
-
-// Schedule the Codeforces data sync job at 2am daily
-// scheduleCFJob();
-
-// Default test route
-app.get('/', (req, res) => {
-    res.send('Backend is running!');
+app.get('/api/health', (req, res) => {
+    res.json({ message: 'Codeforces tracker API is running.' });
 });
+
+// When deployed as one service, serve the React build alongside the API.
+const clientBuildPath = path.join(__dirname, '../client/build');
+if (fs.existsSync(clientBuildPath)) {
+    app.use(express.static(clientBuildPath));
+    app.get('/{*splat}', (req, res, next) => {
+        if (req.path.startsWith('/api/')) return next();
+        res.sendFile(path.join(clientBuildPath, 'index.html'));
+    });
+}
 
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-

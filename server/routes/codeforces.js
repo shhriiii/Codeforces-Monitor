@@ -5,6 +5,16 @@ const express = require('express');
 const axios = require('axios');
 const router = express.Router();
 
+const getCodeforcesResult = async (url) => {
+    const response = await axios.get(url);
+
+    if (response.data.status !== 'OK') {
+        throw new Error(response.data.comment || 'Codeforces could not find that user.');
+    }
+
+    return response.data.result;
+};
+
 // Helper function to filter recent submissions
 const filterSubmissionsByDays = (submissions, days) => {
     const cutoff = Date.now() / 1000 - days * 24 * 60 * 60;
@@ -13,28 +23,36 @@ const filterSubmissionsByDays = (submissions, days) => {
 
 // Route: Submission Heatmap Data
 router.get("/heatmap/:handle", async (req, res) => {
-    const days = parseInt(req.query.days || "365");
-    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    try {
+        const days = parseInt(req.query.days || "365", 10);
+        const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+        const handle = encodeURIComponent(req.params.handle);
+        const subs = await getCodeforcesResult(`https://codeforces.com/api/user.status?handle=${handle}`);
 
-    // Fetch accepted submissions
-    const resp = await axios.get(`https://codeforces.com/api/user.status?handle=${req.params.handle}`);
-    const subs = resp.data.result;
+        const counts = {};
+        subs
+            .filter(sub => sub.verdict === "OK" && sub.creationTimeSeconds * 1000 >= cutoff)
+            .forEach(sub => {
+                const day = new Date(sub.creationTimeSeconds * 1000).setHours(0, 0, 0, 0);
+                counts[day] = (counts[day] || 0) + 1;
+            });
 
-    const filtered = subs.filter(s =>
-        s.verdict === "OK" &&
-        s.creationTimeSeconds * 1000 >= cutoff
-    );
-
-    const counts = {};
-    filtered.forEach(sub => {
-        const day = new Date(sub.creationTimeSeconds * 1000)
-            .setHours(0, 0, 0, 0);
-        counts[day] = (counts[day] || 0) + 1;
-    });
-
-    res.json(counts);
+        res.json(counts);
+    } catch (err) {
+        res.status(502).json({ error: err.message || 'Failed to fetch Codeforces submission data.' });
+    }
 });
 
+// Route: Public Codeforces profile summary
+router.get('/profile/:handle', async (req, res) => {
+    try {
+        const handle = encodeURIComponent(req.params.handle);
+        const users = await getCodeforcesResult(`https://codeforces.com/api/user.info?handles=${handle}`);
+        res.json(users[0]);
+    } catch (err) {
+        res.status(404).json({ error: err.message || 'Codeforces user not found.' });
+    }
+});
 
 
 // Route: Problem Solving Stats
@@ -43,11 +61,17 @@ router.get("/problems/:handle", async (req, res) => {
     const days = parseInt(req.query.days || 30);
 
     try {
-        const resp = await axios.get(`https://codeforces.com/api/user.status?handle=${handle}`);
-        const allSubs = resp.data.result;
+        const allSubs = await getCodeforcesResult(`https://codeforces.com/api/user.status?handle=${encodeURIComponent(handle)}`);
 
+        const solvedProblemIds = new Set();
         const recentAccepted = filterSubmissionsByDays(
-            allSubs.filter(s => s.verdict === "OK" && s.problem.rating),
+            allSubs.filter(s => {
+                if (s.verdict !== "OK" || !s.problem.rating) return false;
+                const problemId = `${s.problem.contestId}-${s.problem.index}`;
+                if (solvedProblemIds.has(problemId)) return false;
+                solvedProblemIds.add(problemId);
+                return true;
+            }),
             days
         );
 
@@ -80,7 +104,7 @@ router.get("/problems/:handle", async (req, res) => {
         });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: "Failed to fetch Codeforces problem data" });
+        res.status(502).json({ error: "Failed to fetch Codeforces problem data" });
     }
 });
 
@@ -91,13 +115,10 @@ router.get("/contests/:handle", async (req, res) => {
   const days = parseInt(req.query.days || "90");
 
   try {
-    const [ratingRes, submissionRes] = await Promise.all([
-      axios.get(`https://codeforces.com/api/user.rating?handle=${handle}`),
-      axios.get(`https://codeforces.com/api/user.status?handle=${handle}`)
+    const [allContests, allSubs] = await Promise.all([
+      getCodeforcesResult(`https://codeforces.com/api/user.rating?handle=${encodeURIComponent(handle)}`),
+      getCodeforcesResult(`https://codeforces.com/api/user.status?handle=${encodeURIComponent(handle)}`)
     ]);
-
-    const allContests = ratingRes.data.result;
-    const allSubs = submissionRes.data.result;
 
     const now = Date.now() / 1000;
     const fromTime = now - days * 24 * 60 * 60;
@@ -153,11 +174,10 @@ router.get("/contests/:handle", async (req, res) => {
     res.json(filteredContests);
   } catch (err) {
     console.error("Error fetching contest data:", err.message);
-    res.status(500).json({ error: "Failed to fetch contest data" });
+    res.status(502).json({ error: "Failed to fetch contest data" });
   }
 });
 module.exports = router;
-
 
 
 
